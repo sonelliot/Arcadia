@@ -1,4 +1,5 @@
 (ns unity.docs
+  (:require 'clojure.string)
   (:import [UnityEngine GameObject Transform]))
 
 (def docs-base "/Applications/Unity/Documentation/html/en/ScriptReference/")
@@ -7,23 +8,42 @@
   (Process/Start (str docs-base page ".html"))
   nil)
 
-(defn open-class-doc [cls]
-  (open-docs-page cls))
+(defn docs
+  [sym]
+    (let [sym-str (str sym)
+          sym-resolved (str (resolve sym))
+          sym-name (clojure.string/replace sym-str "UnityEngine." "")
+          sym-resolved-name (clojure.string/replace sym-resolved "UnityEngine." "")]
+      (cond
+        ;; class documentation
+        (isa? (type (resolve sym)) System.Type)
+          (open-docs-page sym-resolved-name))
 
-(defn open-field-doc [cls field]
-  (open-docs-page (str cls "-" field)))
+      ;; static method or field documentation
+      (not (nil? (re-find #"/" sym-name)))
+      (do
+        ; have to do both, we can't tell methods from fields
+        (open-docs-page (clojure.string/replace sym-name "/" "-"))
+        (open-docs-page (clojure.string/replace sym-name "/" ".")))
 
-(defn open-method-doc [cls meth]
-  (open-docs-page (str cls "." meth)))
+      ;; TODO instance method or field documentation
+      ))
 
-(defmacro docs [d]
-  (cond
-    (instance? clojure.lang.Symbol d)
-      (let [dval (resolve d)]
-        (cond
-          (instance? System.Type dval)
-            `(open-docs-page ~(.Name d))
+(defmacro docs* [sym] (docs sym))
+        
 
-          :else
-            `(open-docs-page
-              ~(clojure.string/replace (str dval) "/" "."))))))
+
+;; (Vector3/Distance)
+;;   (open-method-doc "Vector3" "Distance")
+;;   (open-docs-page "Vector3.Distance")
+;; (Vector3/zero)
+;;   (open-field-doc "Vector3" "zero")
+;;   (open-docs-page "Vector3-zero")
+;; (.normalized vec)
+;; (.. vec normalized)
+;;   (open-field-doc "Vector3" "normalized")
+;;   (open-field-page "Vector3-noralized")
+;; (.SetActive go true)
+;; (.. go (SetActive))
+;;   (open-field-doc "Vector3" "normalized")
+;;   (open-field-page "Vector3-noralized")
