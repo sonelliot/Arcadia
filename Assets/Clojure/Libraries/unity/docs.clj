@@ -9,28 +9,29 @@
   nil)
 
 (defn docs
-  [sym]
-    (let [sym-str (str sym)
-          sym-resolved (str (resolve sym))
-          sym-name (clojure.string/replace sym-str "UnityEngine." "")
-          sym-resolved-name (clojure.string/replace sym-resolved "UnityEngine." "")]
-      (cond
-        ;; class documentation
-        (isa? (type (resolve sym)) System.Type)
-          (open-docs-page sym-resolved-name))
+  ([sym]
+    (if (symbol? sym)
+      (let [sym-str (str sym)
+            sym-resolved (str (resolve sym))
+            sym-name (clojure.string/replace sym-str "UnityEngine." "")
+            sym-resolved-name (clojure.string/replace sym-resolved "UnityEngine." "")]
+        (if
+          ;; class documentation
+          (isa? (type (resolve sym)) System.Type)
+            (open-docs-page sym-resolved-name))
 
-      ;; static method or field documentation
-      (not (nil? (re-find #"/" sym-name)))
-      (do
-        ; have to do both, we can't tell methods from fields
-        (open-docs-page (clojure.string/replace sym-name "/" "-"))
-        (open-docs-page (clojure.string/replace sym-name "/" ".")))
+          ;; static method or field documentation
+          ;; have to do both, we can't tell methods from fields
+          (do
+            (open-docs-page (clojure.string/replace sym-name "/" "-"))
+            (open-docs-page (clojure.string/replace sym-name "/" "."))))
+      (docs (symbol (str (type sym))))))
 
-      ;; TODO instance method or field documentation
-      ))
+  ([inst sym] (docs (symbol (str (type inst) "/" (str sym))))))
 
-(defmacro docs* [sym] (docs sym))
-        
+(defmacro docs*
+  ([sym]
+    `sym))
 
 
 ;; (Vector3/Distance)
