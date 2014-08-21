@@ -31,7 +31,13 @@
 
 (defmacro docs*
   ([sym]
-    `sym))
+    (if (symbol? sym)
+      `(docs ~sym)
+      `(docs
+        (symbol (str
+          (type ~(second (macroexpand sym)))
+          "/"
+          (quote ~(last (macroexpand sym)))))))))
 
 
 ;; (Vector3/Distance)
