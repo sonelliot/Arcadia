@@ -10,13 +10,6 @@
         (.SetPosition lr i (nth vs i))
         (recur (inc i))))))
 
-(defn next-point [v]
-  (Vector3/op_Addition
-    (Vector3/op_Addition v
-                         (Vector3/op_Multiply
-                           speed
-                           UnityEngine.Random/insideUnitSphere))))
-
 (defcomponent Squiggle [trails
                         ^int size
                         ^float speed]
@@ -31,7 +24,12 @@
                                              (Color. r g b 0)
                                              (Color. r g b))))
     (set! trails (atom (map vec (partition size 1 (iterate
-                                                    next-point Vector3/zero))))))
+                                                    #(Vector3/op_Addition
+                                                       %
+                                                       (Vector3/op_Multiply
+                                                         speed
+                                                         UnityEngine.Random/insideUnitSphere))
+                                                    Vector3/zero))))))
   
   (Update [this]
     (set-line
