@@ -1,6 +1,75 @@
 (ns mine
   (:use unity.core)
-  (:import [UnityEngine Resources Debug RequireComponent Rigidbody]))
+  (:require [unity.hydrate :as h])
+  (:import [UnityEngine
+            Resources Debug RequireComponent
+            Rigidbody GameObject Component
+            Vector3]))
+
+;; ============================================================
+;; stuff we should put in core
+;; ============================================================
+
+(defn v3  ^Vector3 [x y z]
+  (Vector3. x y z))
+
+(defn destroy [x]
+  (cond
+    (instance? GameObject x)
+    (let [^GameObject obj x]
+      (if UnityEngine.Application/isPlaying
+        (UnityEngine.Object/Destroy obj)
+        (UnityEngine.Object/DestroyImmediate obj)))
+    
+    (instance? Component x)
+    (let [^Component cmp x]
+      (if UnityEngine.Application/isPlaying
+        (UnityEngine.Object/Destroy cmp)
+        (UnityEngine.Object/DestroyImmediate cmp)))
+
+    :else
+    (throw
+      (System.ArgumentException.
+        (str "Expecting GameObject or Component, instead getting " (type x))))))
+
+(defmacro with-temporary-object [[name init] & body]
+  `(let [~name ~init
+         retval# (do ~@body)]
+     (destroy ~name)
+     retval#))
+
+(defn cube []
+  (GameObject/CreatePrimitive PrimitiveType/Cube))
+
+(defn nab-mesh [^GameObject obj]
+  (.. obj (GetComponent UnityEngine.MeshFilter) sharedMesh))
+
+(defn nab-material [^GameObject obj]
+  (.. obj (GetComponent UnityEngine.MeshRenderer) sharedMaterial))
+
+(defn all-objects []
+  (GameObject/FindObjectsOfType (type-args UnityEngine.GameObject)))
+
+(defn kill-by-name [name]
+  (doseq [^GameObject obj (all-objects)
+          :when (= (.name obj) name)]
+    (UnityEngine.Object/DestroyImmediate obj)))
+
+;; ============================================================
+;; basic resources
+;; ============================================================
+
+(def cube-mesh
+  (with-temporary-object [c (cube)]
+    (nab-mesh c)))
+
+(def default-material
+  (with-temporary-object [c (cube)]
+    (nab-material c)))
+
+;; ============================================================
+;; minelands
+;; ============================================================
 
 (defcomponent ^{RequireComponent Rigidbody} VoxelTexture
   [^System.String texure]
@@ -40,7 +109,8 @@
     ([x] `(Mathf/PerlinNoise (+ 0.1 ~x) 0))
     ([x y] `(Mathf/PerlinNoise (+ 0.1 ~x) ~y)))
 
-(let [vx (GameObject/Find "Voxel"), dim 50]
+(defn make-land []
+  (let [vx (GameObject/Find "Voxel"), dim 50]
     (doseq [x (range dim)
             z (range dim)]
       (let [height (int (+ 1 (* 20 (noise 
@@ -51,6 +121,10 @@
             (let [tex (Resources/Load (str "Textures/" (texture-at-height y 20)))
                   obj (GameObject/Instantiate vx)
                   ren (.GetComponent obj UnityEngine.Renderer)]
-              (populate-game-object! obj {:name (str "Voxel " [x y z])
-                                          :transform [{:position [x y z]}]})
-              (set! (.. ren material mainTexture) tex)))))))
+              (h/populate-game-object! obj
+                {:name (str "Voxel " [x y z])
+                 :transform [{:position [x y z]}]
+                 :box-collider [{:extents [0.5 0.5 0.5]}]
+                 :rigidbody [{:mass 10
+                              :is-kinematic true}]})
+              (set! (.. ren material mainTexture) tex))))))))
