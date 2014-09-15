@@ -10,6 +10,10 @@
         (.SetPosition lr i (nth vs i))
         (recur (inc i))))))
 
+(defn next-squig-point [v1 speed]
+  (Vector3/op_Addition v1
+    (Vector3/op_Multiply speed UnityEngine.Random/insideUnitSphere)))
+
 (defcomponent Squiggle [trails
                         ^int size
                         ^float speed]
@@ -23,13 +27,12 @@
       (.. this (GetComponent LineRenderer) (SetColors
                                              (Color. r g b 0)
                                              (Color. r g b))))
-    (set! trails (atom (map vec (partition size 1 (iterate
-                                                    #(Vector3/op_Addition
-                                                       %
-                                                       (Vector3/op_Multiply
-                                                         speed
-                                                         UnityEngine.Random/insideUnitSphere))
-                                                    Vector3/zero))))))
+    (set! trails
+      (atom
+        (->> Vector3/zero
+          (iterate #(next-squig-point % speed))
+          (partition size 1)
+          (map vec)))))
   
   (Update [this]
     (set-line
@@ -43,14 +46,15 @@
   (Awake [this]
      (require 'squiggle))
   (Update [this]
-    (let [trails (.. squiggle trails)
-          focus (first (first @trails))
-          pos (.. this transform position)
-          dir (Vector3/op_Subtraction focus pos)
+    (let [trails  (.. squiggle trails)
+          focus   (first (first @trails))
+          pos     (.. this transform position)
+          dir     (Vector3/op_Subtraction focus pos)
           new-dir (Vector3/RotateTowards (.. this transform forward) dir (* follow Time/deltaTime) 0)
-          rot (Quaternion/LookRotation new-dir)]
+          rot     (Quaternion/LookRotation new-dir)]
       (set! (.. this transform position)
-            (Vector3/MoveTowards pos focus (* follow Time/deltaTime)))
+            (Vector3/MoveTowards
+              pos focus (* follow Time/deltaTime)))
       (set! (.. this transform rotation)
             rot))))
 
