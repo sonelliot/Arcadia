@@ -31,8 +31,7 @@
                                              (Color. r g b 0)
                                              (Color. r g b))))
     (set! trails (atom (map vec (partition size 1 (iterate
-                                                    next-point Vector3/zero))))))
-  
+                                                    next-point Vector3/zero))))))  
   (Update [this]
     (set-line
       (.. this (GetComponent LineRenderer))
