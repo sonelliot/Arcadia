@@ -11,13 +11,14 @@
         (recur (inc i))))))
 
 (defn next-squig-point [v1 speed]
-  (Vector3/op_Addition v1
-    (Vector3/op_Multiply speed UnityEngine.Random/insideUnitSphere)))
+  (let [v1 (Vector3/op_Addition v1
+             (Vector3/op_Multiply speed UnityEngine.Random/insideUnitSphere))]
+    (Vector3/op_Multiply 0.99 v1)))
 
 (defcomponent Squiggle [trails
                         ^int size
                         ^float speed]
-  (Awake [this]
+  (Awake [this] 
     (require 'squiggle))
 
   (Start [this]
@@ -28,26 +29,27 @@
                                              (Color. r g b 0)
                                              (Color. r g b))))
     (set! trails
-      (atom
-        (->> Vector3/zero
-          (iterate #(next-squig-point % speed))
-          (partition size 1)
-          (map vec)))))
+      (->> Vector3/zero
+        (iterate #(next-squig-point % speed))
+        (take size)
+        vec)))
   
   (Update [this]
     (set-line
       (.. this (GetComponent LineRenderer))
       (CatmullRomSpline/Generate
-        (into-array Vector3 (first @trails))
-        5))
-    (swap! trails next)))
+        (into-array Vector3 trails)
+        15))
+    (set! trails
+      (conj (subvec trails 1)
+        (next-squig-point (peek trails) speed)))))
 
 (defcomponent LookAtSquiggle [^Squiggle squiggle ^float follow]
   (Awake [this]
      (require 'squiggle))
   (Update [this]
     (let [trails  (.. squiggle trails)
-          focus   (first (first @trails))
+          focus   (ffirst trails)
           pos     (.. this transform position)
           dir     (Vector3/op_Subtraction focus pos)
           new-dir (Vector3/RotateTowards (.. this transform forward) dir (* follow Time/deltaTime) 0)
