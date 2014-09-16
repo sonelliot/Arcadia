@@ -105,26 +105,53 @@
       (one-of
         "ice"))))
 
+
+(defn test-transform-check-1 [x]
+  ((fn [x']
+     (= UnityEngine.Transform (type x')))
+   x))
+
+(let [trnst UnityEngine.Transform]
+  (defn test-transform-check-2 [x]
+    ((fn [x']
+       (= trnst (type x')))
+     x)))
+
 (defmacro noise
     ([x] `(Mathf/PerlinNoise (+ 0.1 ~x) 0))
     ([x y] `(Mathf/PerlinNoise (+ 0.1 ~x) ~y)))
 
 (defn make-land []
-  (let [vx (GameObject/Find "Voxel"), dim 50]
+  (let [vx (GameObject/Find "Voxel"), dim 10]
     (doseq [x (range dim)
             z (range dim)]
       (let [height (int (+ 1 (* 20 (noise 
                                      (* 0.05 x)
                                      (* 0.05 z)))))]
         (doseq [y (range height)]
-          (if (= y (- height 1))
+          (if (= y (- height 1)) 
             (let [tex (Resources/Load (str "Textures/" (texture-at-height y 20)))
                   obj (GameObject/Instantiate vx)
                   ren (.GetComponent obj UnityEngine.Renderer)]
               (h/populate-game-object! obj
                 {:name (str "Voxel " [x y z])
-                 :transform [{:position [x y z]}]
-                 :box-collider [{:extents [0.5 0.5 0.5]}]
+                 :transform [{:position (v3 x y z) ;[x y z]
+                              }]
+                 :box-collider [{:extents  (v3 0.5 0.5 0.5) ;[0.5 0.5 0.5]
+                                 }]
                  :rigidbody [{:mass 10
                               :is-kinematic true}]})
               (set! (.. ren material mainTexture) tex))))))))
+
+(defcomponent land-maker []
+  (Awake [_]
+    (require 'mine))
+  
+  (Update [this]
+    (when Input/anyKeyDown
+      (test-transform-check-1 :bla)
+      (test-transform-check-2 :bla)
+      (println "hitting update")
+      ;(make-land)
+      )))
+
