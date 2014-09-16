@@ -235,7 +235,7 @@
 ;; for runtime reflection?
 (defn get-component
   {:inline (fn [obj t]
-             (list 'unity.interop/get-component* obj t))
+             (list 'unity.core/get-component* obj t))
    :inline-arities #{2}}
   [obj t]
   (.GetComponent obj t))

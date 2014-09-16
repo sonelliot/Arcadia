@@ -55,9 +55,9 @@
           :when (= (.name obj) name)]
     (UnityEngine.Object/DestroyImmediate obj)))
 
-;; ============================================================
-;; basic resources
-;; ============================================================
+; ;; ============================================================
+; ;; basic resources
+; ;; ============================================================
 
 (def cube-mesh
   (with-temporary-object [c (cube)]
@@ -67,9 +67,9 @@
   (with-temporary-object [c (cube)]
     (nab-material c)))
 
-;; ============================================================
-;; minelands
-;; ============================================================
+; ;; ============================================================
+; ;; minelands
+; ;; ============================================================
 
 (defcomponent ^{RequireComponent Rigidbody} VoxelTexture
   [^System.String texure]
@@ -81,30 +81,32 @@
 (defn one-of [& branches]
   (rand-nth branches))
 
-(defn texture-at-height
-  ([height max-height] (texture-at-height (/ height max-height)))
-  ([height]
-    (cond
-      (<= height 0.25)
-      (one-of
-        "bedrock")
-      (<= 0.25 height 0.3)
-      (one-of
-        "gravel")
-      (<= 0.3 height 0.5)
-      (one-of
-        "grass_top")
-      (<= 0.5 height 0.6)
-      (one-of
-        "cobblestone"
-        "cobblestone_mossy")
-      (<= 0.6 height 0.75)
-      (one-of
-        "snow")
-      (<= 0.75 height)
-      (one-of
-        "ice"))))
+(defmacro angry-lte [& xs]
+  (cons 'and (map #(cons '<= %) (partition 2 1 xs))))
 
+(defn texture-at-height
+  ([^double height ^double max-height] (texture-at-height (/ height max-height)))
+  ([^double height]
+     (cond
+       (angry-lte height 0.25)
+       (one-of
+         "bedrock")
+       (angry-lte 0.25 height 0.3)
+       (one-of
+         "gravel")
+       (angry-lte 0.3 height 0.5)
+       (one-of
+         "grass_top")
+       (angry-lte 0.5 height 0.6)
+       (one-of
+         "cobblestone"
+         "cobblestone_mossy")
+       (angry-lte 0.6 height 0.75)
+       (one-of
+         "snow")
+       (angry-lte 0.75 height)
+       (one-of
+         "ice"))))
 
 (defn test-transform-check-1 [x]
   ((fn [x']
@@ -128,17 +130,15 @@
       (let [height (int (+ 1 (* 20 (noise 
                                      (* 0.05 x)
                                      (* 0.05 z)))))]
-        (doseq [y (range height)]
+        (doseq [^double y (range height)]
           (if (= y (- height 1)) 
             (let [tex (Resources/Load (str "Textures/" (texture-at-height y 20)))
-                  obj (GameObject/Instantiate vx)
+                  ^GameObject obj (GameObject/Instantiate vx)
                   ren (.GetComponent obj UnityEngine.Renderer)]
               (h/populate-game-object! obj
-                {:name (str "Voxel " [x y z])
-                 :transform [{:position (v3 x y z) ;[x y z]
-                              }]
-                 :box-collider [{:extents  (v3 0.5 0.5 0.5) ;[0.5 0.5 0.5]
-                                 }]
+                {:name "Voxel"
+                 :transform [{:position (v3 x y z)}]
+                 :box-collider [{:extents (v3 0.5 0.5 0.5)}]
                  :rigidbody [{:mass 10
                               :is-kinematic true}]})
               (set! (.. ren material mainTexture) tex))))))))
@@ -149,9 +149,10 @@
   
   (Update [this]
     (when Input/anyKeyDown
-      (test-transform-check-1 :bla)
-      (test-transform-check-2 :bla)
-      (println "hitting update")
+      ;(test-transform-check-1 :bla)
+      ;(test-transform-check-2 :bla)
+      (make-land)
+      (Debug/Log "hitting update like a pro")
       ;(make-land)
       )))
 
