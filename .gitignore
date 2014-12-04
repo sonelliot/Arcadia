@@ -1,7 +1,10 @@
+# -*- mode: sh; -*-
+
 # =============== #
 #  Clojure Unity  #
 # =============== #
 *.mdb
+*.mdb.meta
 **/Compiled/*.exe*
 **/Compiled/*.dll*
 
@@ -39,3 +42,9 @@ Icon?
 ehthumbs.db
 Thumbs.db
 
+# ======= #
+# Editors #
+# ======= #
+
+*~
+\#*\#
