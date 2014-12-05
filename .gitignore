@@ -5,6 +5,8 @@
 # =============== #
 *.mdb
 *.mdb.meta
+arcadia.log
+arcadia.log.meta
 **/Compiled/*.exe*
 **/Compiled/*.dll*
 

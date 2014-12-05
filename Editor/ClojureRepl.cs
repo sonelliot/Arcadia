@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿// -*- c-basic-offset: 2; -*-
+
+using UnityEngine;
 using UnityEditor;
 using clojure.lang;
 using System;
@@ -12,7 +14,7 @@ using System.Threading;
 public class ClojureRepl : EditorWindow {
   static ClojureRepl() {
     // TODO read from config
-    ClojureRepl.StartREPL();
+    RT.load("arcadia/repl/server");
   }
 
   [MenuItem ("Arcadia/REPL/Window...")]
@@ -21,38 +23,45 @@ public class ClojureRepl : EditorWindow {
   }
 
   public static void Update() {
-    RT.var("arcadia.repl", "eval-queue").invoke();
+    RT.var("arcadia.repl.server", "update").invoke();
   }
 
   [MenuItem ("Arcadia/REPL/Start %#r")]
   public static void StartREPL () {
-    RT.load("arcadia/repl");
-    RT.var("arcadia.repl", "start-server").invoke(11211);
+    RT.var("arcadia.repl.server", "start").invoke(11211);
     EditorApplication.update += ClojureRepl.Update;
   }
 
   [MenuItem ("Arcadia/REPL/Stop &#r")]
   public static void StopREPL () {
-    RT.var("arcadia.repl", "stop-server").invoke();
+    RT.var("arcadia.repl.server", "stop").invoke();
     EditorApplication.update -= ClojureRepl.Update;
   }
 
-  void OnGUI () {
-    if(RT.booleanCast(RT.var("arcadia.repl", "server-running").deref())) {
+  void OnInspectorUpdate() {
+    // Manually repaint the window with some regularity. If we do not do this
+    // then OnGUI() will only be called while the window has focus.
+    Repaint();
+  }
+
+  void OnGUI()
+  {
+    bool running = (bool)RT.var("arcadia.repl.server", "is-running?").invoke();
+    if (running)
+    {
       GUI.color = Color.red;
-      if(GUILayout.Button("Stop REPL")) {
+      if (GUILayout.Button("Stop REPL"))
+      {
         ClojureRepl.StopREPL();
       }
-
-      GUILayout.Label("REPL is listening");
-
-    } else {
+    }
+    else
+    {
       GUI.color = Color.green;
-      if(GUILayout.Button("Start REPL")) {
+      if (GUILayout.Button("Start REPL"))
+      {
         ClojureRepl.StartREPL();
       }
-
-      GUILayout.Label("REPL is not running");
     }
   }
 }
