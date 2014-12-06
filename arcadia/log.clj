@@ -1,22 +1,23 @@
 (ns arcadia.log
-  (:require [clojure.clr.io :refer :all]
-            ;; [clojure.string :refer [join]]
+  (:require [clojure.string :as s]
             [arcadia.config :refer [configuration]])
   (:import [UnityEngine Debug]
            [System.IO File]))
 
 (def ^:private logfile "Assets/Arcadia/arcadia.log")
 
-(defn- timestamp []
+(defn- timestamp
   "Current time as a string."
-  (str "[ " (str DateTime/Now) " ]"))
+  [] (str "[ " (str DateTime/Now) " ]"))
 
-(defn- form [msg]
+(defn- form
   "Form the log file message."
-  (str (timestamp) " " msg Environment/NewLine))
+  [msg] (str (timestamp) " " msg Environment/NewLine))
 
-(defn log [msg]
+(defn log
   "Log a message to the logfile."
-  (File/AppendAllText logfile (form msg))
-  (when (@configuration :verbose)
-    (Debug/Log msg)))
+  [& msgs]
+  (let [msg (s/join msgs)]
+    (File/AppendAllText logfile (form msg))
+    (when (@configuration :verbose)
+      (Debug/Log msg))))

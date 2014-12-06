@@ -23,7 +23,7 @@ public class ClojureRepl : EditorWindow {
   }
 
   public static void Update() {
-    RT.var("arcadia.repl.server", "update").invoke();
+    // RT.var("arcadia.repl.server", "update").invoke();
   }
 
   [MenuItem ("Arcadia/REPL/Start %#r")]
