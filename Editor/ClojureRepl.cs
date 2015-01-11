@@ -12,7 +12,8 @@ using System.Threading;
 public class ClojureRepl : EditorWindow {
   static ClojureRepl() {
     // TODO read from config
-    ClojureRepl.StartREPL();
+    // ClojureRepl.StartREPL();
+    RT.load("arcadia/repl");
   }
 
   [MenuItem ("Arcadia/REPL/Window...")]
@@ -26,7 +27,6 @@ public class ClojureRepl : EditorWindow {
 
   [MenuItem ("Arcadia/REPL/Start %#r")]
   public static void StartREPL () {
-    RT.load("arcadia/repl");
     RT.var("arcadia.repl", "start-server").invoke(11211);
     EditorApplication.update += ClojureRepl.Update;
   }
@@ -38,7 +38,8 @@ public class ClojureRepl : EditorWindow {
   }
 
   void OnGUI () {
-    if(RT.booleanCast(RT.var("arcadia.repl", "server-running").deref())) {
+    bool running = RT.booleanCast(RT.var("arcadia.repl", "is-running?").invoke());
+    if (running) {
       GUI.color = Color.red;
       if(GUILayout.Button("Stop REPL")) {
         ClojureRepl.StopREPL();

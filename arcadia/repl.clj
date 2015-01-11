@@ -75,6 +75,8 @@
 (def work-queue (Queue/Synchronized (Queue.)))
 (def server-running (atom false))
 
+(defn is-running? [] (deref server-running))
+
 (defn eval-queue []
   (while (> (.Count work-queue) 0)
     (let [[code socket destination] (.Dequeue work-queue)
