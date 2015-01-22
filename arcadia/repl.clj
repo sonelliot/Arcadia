@@ -116,6 +116,46 @@
     (catch Exception e
       (Debug/Log (format "Error in UDP message handler: %s" (str e)))))))
 
+(defn utf8-string [bytes]
+  (.GetString Encoding/UTF8 bytes 0 (.Length bytes)))
+
+(defn utf8-bytes [str]
+  (.GetBytes Encoding/UTF8 str))
+
+(defn make-socket [port]
+  (UdpClient. (IPEndPoint. IPAddress/Any port)))
+
+(defn make-thread [proc]
+  (Thread. (gen-delegate ThreadStart [] (proc))))
+
+(defn do-thread! [proc]
+  (let [t (make-thread proc)] (.Start t) t))
+
+(defn block-forever []
+  (do-thread!
+   (fn []
+     (let [f (future (while true nil))]
+       @f))))
+
+(defn listen [socket sender proc]
+  (.BeginReceive
+   socket (gen-delegate AsyncCallback [[socket sender]]
+                        (proc sender socket))
+   [socket sender]))
+
+(defn listen-bytes [socket sender proc]
+  (listen socket sender
+          (fn [sender socket]
+            (proc (.EndReceive socket (by-ref sender))))))
+
+(defn test-listen [port]
+  (let [socket (make-socket port)
+        sender (IPEndPoint. IPAddress/Any port)]
+    (listen-bytes
+     socket (IPEndPoint. IPAddress/Any port)
+     #(do
+        (Debug/Log "Received something!")))))
+
 (defn start-server [^long port]
   ;; (if @server-running
   ;;   (throw (Exception. "REPL Already Running"))
