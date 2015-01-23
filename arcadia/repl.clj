@@ -1,7 +1,8 @@
 (ns arcadia.repl
   (:refer-clojure :exclude [with-bindings])
   (:require [clojure.main :as main]
-            [arcadia.config :refer [configuration]])
+            [arcadia.config :refer [configuration]]
+            [arcadia.util :as u])
   (:import
     [UnityEngine Debug]
     [System.IO EndOfStreamException]
@@ -73,8 +74,9 @@
        (repl-eval-print default-repl-env s))))
 
 (def work-queue (Queue/Synchronized (Queue.)))
-(def server-running (atom false))
-(def waiting-for-message (atom false))
+(def message (atom ""))
+(def waiting (atom false))
+(def server-thread (atom nil))
 
 (defn eval-queue []
   (while (> (.Count work-queue) 0)
@@ -86,119 +88,46 @@
                   (catch Exception e
                     (str e)))
           bytes (.GetBytes Encoding/UTF8 (str result "\n" (ns-name (:*ns* @default-repl-env)) "=> "))]
-            (try
-              (Debug/Log result)
-              (.Send socket bytes (.Length bytes) destination)
-             (catch Exception e
-               (Debug/Log "blah")
-               (Debug/Log (str e)))))))
+            (.Send socket bytes (.Length bytes) destination))))
 
-(defn- listen-and-block [^UdpClient socket]
-  (let [sender (IPEndPoint. IPAddress/Any 0)
-        incoming-bytes (.Receive socket (by-ref sender))
-        incoming-code (.GetString Encoding/UTF8 incoming-bytes 0 (.Length incoming-bytes))]
-          (.Enqueue work-queue [incoming-code socket sender])))
+(defn begin-receive! [socket sender]
+  (Debug/Log "begin-receive!")
+  (letfn [(callback [result]
+            (let [socket (first (.get_AsyncState result))
+                  sender (second (.get_AsyncState result))
+                  bytes (first (.EndReceive socket result (by-ref sender)))]
+              (reset! message (u/utf8-string bytes))))]
+    (.BeginReceive socket callback [socket sender])
+    (reset! waiting true)))
 
-(defn get-server-running [] @server-running)
-(defn get-waiting-for-message [] @waiting-for-message)
-
-(def handle-message
-  (gen-delegate
-   AsyncCallback [result]
-   (try
-    (let [[socket _] (.get_AsyncState result)
-          sender (IPEndPoint. IPAddress/Any 0)
-          bytes (first (.EndReceive socket result (by-ref sender)))
-          codes (.GetString Encoding/UTF8 bytes 0 (.Length bytes))]
-      (Debug/Log codes)
-      (.Enqueue work-queue [codes socket sender])
-      (reset! waiting-for-message false))
-    (catch Exception e
-      (Debug/Log (format "Error in UDP message handler: %s" (str e)))))))
-
-(defn utf8-string [bytes]
-  (.GetString Encoding/UTF8 bytes 0 (.Length bytes)))
-
-(defn utf8-bytes [str]
-  (.GetBytes Encoding/UTF8 str))
-
-(defn make-socket [port]
-  (UdpClient. (IPEndPoint. IPAddress/Any port)))
-
-(defn make-thread [proc]
-  (Thread. (gen-delegate ThreadStart [] (proc))))
-
-(defn do-thread! [proc]
-  (let [t (make-thread proc)] (.Start t) t))
-
-(defn block-forever []
-  (do-thread!
-   (fn []
-     (let [f (future (while true nil))]
-       @f))))
-
-(defn listen [socket sender proc]
-  (.BeginReceive
-   socket (gen-delegate AsyncCallback [[socket sender]]
-                        (proc sender socket))
-   [socket sender]))
-
-(defn listen-bytes [socket sender proc]
-  (listen socket sender
-          (fn [sender socket]
-            (proc (.EndReceive socket (by-ref sender))))))
-
-(defn test-listen [port]
-  (let [socket (make-socket port)
-        sender (IPEndPoint. IPAddress/Any port)]
-    (listen-bytes
-     socket (IPEndPoint. IPAddress/Any port)
-     #(do
-        (Debug/Log "Received something!")))))
+(defn enqueue-work! [data]
+  (Debug/Log "enqueue-work!")
+  (.Enqueue work-queue data)
+  (reset! message "")
+  (reset! waiting false))
 
 (defn start-server [^long port]
-  ;; (if @server-running
-  ;;   (throw (Exception. "REPL Already Running"))
-  ;;   (do
-  ;;     (reset! server-running true)
-  ;;     (let [sender (IPEndPoint. IPAddress/Any port)
-  ;;           socket (UdpClient. sender)]
-  ;;       (doto
-  ;;        (Thread.
-  ;;         (gen-delegate
-  ;;          ThreadStart []
-  ;;          (while @server-running
-  ;;            ; (Debug/Log "waiting...")
-  ;;            (when (not @waiting-for-message)
-  ;;              (Debug/Log "begin receive")
-  ;;              (.BeginReceive socket handle-message [socket sender])
-  ;;              (reset! waiting-for-message true)))
-  ;;          (.Close socket)))
-  ;;        (.set_Name "REPL") (.Start)))))
-  (reset! server-running true))
-
-;; (defn start-server [^long port]
-;;   (if @server-running
-;;     (throw (Exception. "REPL Already Running"))
-;;     (do
-;;       (reset! server-running true)
-;;       (let [socket (UdpClient. (IPEndPoint. IPAddress/Any port))]
-;;         (doto (Thread.
-;;                (gen-delegate ThreadStart []
-;;                              (if (@configuration :verbose)
-;;                                (Debug/Log "Starting UDP REPL..."))
-;;                              (while @server-running
-;;                                (listen-and-block socket))
-;;                              (if (@configuration :verbose)
-;;                                (Debug/Log "Stopping UDP REPL..."))
-;;                              ;; (Debug/Log "Starting REPL...")
-;;                              ;; (while @server-running
-;;                              ;;   (listen-and-block socket))
-;;                              ;; (Debug/Log "Stopping REPL...")
-;;                              (.Close socket)))
-;;           (.set_Name "arcadia-repl")
-;;           (.Start))))))
+  (when (not @server-thread)
+    (Debug/Log "repl start")
+    (reset! server-thread
+     (u/do-thread!
+      #(let [sender (IPEndPoint. IPAddress/Any port)
+             socket (UdpClient. sender)]
+         (try
+           (while true
+             (u/sleep! 100)
+             (cond
+              (not (empty? @message)) (enqueue-work! [@message socket sender])
+              (not @waiting) (begin-receive! socket sender)
+              :else nil))
+           (catch Exception e
+             (Debug/Log (str e)))
+           (finally
+             (.Close socket))))))))
 
 (defn stop-server []
-  (reset! server-running false)
-  (reset! waiting-for-message false))
+  (Debug/Log "repl stop")
+  (doto @server-thread .Abort .Join)
+  (reset! server-thread nil)
+  (reset! message "")
+  (reset! waiting false))

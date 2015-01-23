@@ -19,13 +19,14 @@
        (s/replace #"[^\(\)\[\]\{\}]" "")
        (s/replace #"(\(\)|\[\]|\{\})" ""))))
 
-(defn read-input [f]
+(defn read-input! [proc]
   (loop [line "" code ""]
     (if (and (not (s/blank? code)) (balanced? code))
-      (do (f code) (recur (read-line) ""))
+      (do (proc code) (recur (read-line) ""))
       (recur (read-line) (str code line)))))
 
-(defn -main [& args]
-  (let [client (TcpClient. "localhost" 11211)
+(defn -main [& [p]]
+  (let [port (or (and p (int p)) 11211)
+        client (TcpClient. "localhost" port)
         stream (.GetStream client)]
-    (read-input (partial send-and-receive stream))))
+    (read-input! (partial send-and-receive stream))))

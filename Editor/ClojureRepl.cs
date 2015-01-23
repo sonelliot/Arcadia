@@ -14,6 +14,7 @@ using System.Threading;
 public class ClojureRepl : EditorWindow {
   static ClojureRepl() {
     // TODO read from config
+    RT.load("arcadia/repl");
     RT.load("arcadia/repl/server");
   }
 
@@ -23,17 +24,29 @@ public class ClojureRepl : EditorWindow {
   }
 
   public static void Update() {
-    // RT.var("arcadia.repl.server", "update").invoke();
+    RT.var("arcadia.repl", "eval-queue").invoke();
   }
 
-  [MenuItem ("Arcadia/REPL/Start %#r")]
-  public static void StartREPL () {
-    RT.var("arcadia.repl.server", "start").invoke(11211);
+  [MenuItem ("Arcadia/REPL/Start UDP %#r")]
+  public static void StartUDP () {
+    RT.var("arcadia.repl", "start-server").invoke(11211);
     EditorApplication.update += ClojureRepl.Update;
   }
 
-  [MenuItem ("Arcadia/REPL/Stop &#r")]
-  public static void StopREPL () {
+  [MenuItem ("Arcadia/REPL/Stop UDP &#r")]
+  public static void StopUDP () {
+    RT.var("arcadia.repl", "stop-server").invoke();
+    EditorApplication.update -= ClojureRepl.Update;
+  }
+
+  [MenuItem ("Arcadia/REPL/Start TCP %#r")]
+  public static void StartTCP () {
+    RT.var("arcadia.repl.server", "start").invoke(11212);
+    EditorApplication.update += ClojureRepl.Update;
+  }
+
+  [MenuItem ("Arcadia/REPL/Stop TCP &#r")]
+  public static void StopTCP () {
     RT.var("arcadia.repl.server", "stop").invoke();
     EditorApplication.update -= ClojureRepl.Update;
   }
@@ -46,22 +59,22 @@ public class ClojureRepl : EditorWindow {
 
   void OnGUI()
   {
-    bool running = (bool)RT.var("arcadia.repl.server", "is-running?").invoke();
-    if (running)
-    {
-      GUI.color = Color.red;
-      if (GUILayout.Button("Stop REPL"))
-      {
-        ClojureRepl.StopREPL();
-      }
-    }
-    else
-    {
-      GUI.color = Color.green;
-      if (GUILayout.Button("Start REPL"))
-      {
-        ClojureRepl.StartREPL();
-      }
-    }
+    // bool running = (bool)RT.var("arcadia.repl", "is-running?").invoke();
+    // if (running)
+    // {
+    //   GUI.color = Color.red;
+    //   if (GUILayout.Button("Stop REPL"))
+    //   {
+    //     ClojureRepl.StopREPL();
+    //   }
+    // }
+    // else
+    // {
+    //   GUI.color = Color.green;
+    //   if (GUILayout.Button("Start REPL"))
+    //   {
+    //     ClojureRepl.StartREPL();
+    //   }
+    // }
   }
 }

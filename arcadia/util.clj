@@ -1,12 +1,21 @@
 (ns arcadia.util
   (:import
+   [System.Text Encoding]
    [System.Threading Thread ThreadStart]))
 
-(defn bytes->utf8 [bytes]
-  (.GetString Encoding/UTF8 bytes 0 (.Length bytes)))
+(defn utf8-string [bytes]
+  (.GetString Encoding/UTF8 bytes))
 
-(defn utf8->bytes [str]
+(defn utf8-bytes [str]
   (.GetBytes Encoding/UTF8 str))
+
+(defn make-thread [proc]
+  (Thread. (gen-delegate ThreadStart [] (proc))))
+
+(defn do-thread! [proc]
+  (let [t (make-thread proc)] (.Start t) t))
+
+(defn sleep! [ms] (Thread/Sleep ms))
 
 (defn named-thread [name proc]
   "Spawn a named thread with thunk procedure."
