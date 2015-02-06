@@ -19,7 +19,8 @@ namespace Arcadia {
 
       CheckSettings();
       SetClojureLoadPath();
-      StartREPL();
+      // Let the user start the REPL manually!
+      // StartREPL();
 
       Debug.Log("Arcadia Started!");
     }
@@ -75,11 +76,13 @@ namespace Arcadia {
 
       string clojureDllFolder = FindClojureDll();
       string sep = PathSeperator();
+      string assetPath = Application.dataPath;
 
       Environment.SetEnvironmentVariable("CLOJURE_LOAD_PATH",
-        Path.GetFullPath(VariadicCombine(clojureDllFolder, "..", "Compiled")) + sep +
-        Path.GetFullPath(VariadicCombine(clojureDllFolder, "..", "Source")) + sep +
-        Path.GetFullPath(Application.dataPath));
+          Path.GetFullPath(VariadicCombine(clojureDllFolder, "..", "Compiled")) + sep +
+          Path.GetFullPath(VariadicCombine(clojureDllFolder, "..", "Source")) + sep +
+          Path.GetFullPath(VariadicCombine(assetPath, "Scripts", "Clojure")) + sep +
+          Path.GetFullPath(assetPath));
       Debug.Log("Load Path is " + Environment.GetEnvironmentVariable("CLOJURE_LOAD_PATH"));
     }
 
