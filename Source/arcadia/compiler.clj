@@ -140,16 +140,20 @@
    (.ComputeHash (MD5/Create) (.GetBytes Encoding/UTF8 text))))
 
 (defn import-compiled [asset]
-  (let [guid (hash-string (s/replace asset #"\.clj\.dll" ""))
-        meta (str asset ".meta")]
-    (Debug/Log (format "Generating GUID for compiled DLL '%s'" asset))
+  (let [file (Path/GetFileNameWithoutExtension asset)
+        meta (str asset ".meta")
+        guid (hash-string file)]
+    (Debug/Log (format "GUID for compiled DLL '%s' is '%s'" file guid))
     (spit meta (s/replace (slurp meta) #"\b[0-9a-f]{32}\b" guid))))
 
 (defn import-assets [imported]
   (let [files (clj-files imported)
         compiled (clj-compiled imported)]
     (doseq [asset files] (import-asset asset))
-    (doseq [asset compiled] (import-compiled asset))))
+    ;; Disabled for now. Using the work-around of checking in the compiled
+    ;; DLLs and letting Unity generate their GUIDs.
+    ;; (doseq [asset compiled] (import-compiled asset))
+    ))
 
 (defn delete-assets [deleted]
   (doseq [asset (clj-files deleted)]
